@@ -8,6 +8,7 @@ dotenv.config()
 const envSchema = z.object({
   DISCORD_TOKEN: z.string(),
   DISCORD_APP_ID: z.string(),
+  GUILD_ID: z.string(),
   DEBUG: z.string().transform((val) => {
     const lower = val.toLowerCase()
     if (lower === "true" || lower === "1") return true

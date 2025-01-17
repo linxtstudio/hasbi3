@@ -1,4 +1,5 @@
 import { SlashCommand, SlashCommandConfig } from "@/types/command"
+import { MessageFlags } from "discord.js"
 
 const config: SlashCommandConfig = {
   description: "Show the latency of the bot",
@@ -14,11 +15,10 @@ const config: SlashCommandConfig = {
 }
 
 const command: SlashCommand = {
-  // permissions: 0,
   execute: async (interaction) => {
     const ping = await interaction.reply({
       content: "Pinging...",
-      fetchReply: true,
+      flags: MessageFlags.Ephemeral,
     })
 
     const emoji = interaction.options.get("emoji")?.value ?? "🏓"
