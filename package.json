@@ -1,0 +1,33 @@
+{
+  "name": "discordjs-template-ts",
+  "description": "Template for a discord.js bot with TypeScript",
+  "version": "14.14.1-0.1.5",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development nodemon",
+    "build": "tsup && tsc-alias",
+    "start": "cross-env NODE_ENV=production node ./dist/index.js",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "chalk": "4.1.2",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.1.1",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.11.20",
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.0",
+    "prettier": "^3.2.5",
+    "tsc-alias": "^1.8.8",
+    "tslib": "^2.6.2",
+    "tsup": "^8.0.2",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}
