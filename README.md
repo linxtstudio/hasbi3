@@ -1,10 +1,8 @@
-# DiscordJS Bot Template
-
-> Updated to discord.js v14.14.1
+# Hasbi3 Bot
 
 ## About
 
-This is a template for a DiscordJS v14 bot. It is written in TypeScript and uses [DiscordJS](https://discord.js.org/#/) as the library for interacting with Discord.
+Version 3 of the famous Hasbi bot. It is written in TypeScript and uses [DiscordJS](https://discord.js.org/#/) as the library for interacting with Discord.
 
 ## Setup
 
