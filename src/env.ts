@@ -9,15 +9,20 @@ const envSchema = z.object({
   DISCORD_TOKEN: z.string(),
   DISCORD_APP_ID: z.string(),
   GUILD_ID: z.string(),
-  DEBUG: z.string().transform((val) => {
-    const lower = val.toLowerCase()
-    if (lower === "true" || lower === "1") return true
-    return false
-  }),
+  HASBI3_CHANNEL_ID: z.string(),
+  GROQ_API_KEY: z.string(),
+  DEBUG: z.preprocess(
+    (val) => (val === undefined ? undefined : String(val)),
+    z.string().transform((val) => {
+      const lower = val.toLowerCase()
+      if (lower === "true" || lower === "1") return true
+      return false
+    })
+  ),
   NODE_ENV: z.string(),
 })
 
-function parseEnv(schema: z.ZodSchema) {
+function parseEnv<T>(schema: z.ZodSchema<T>) {
   try {
     return schema.parse(process.env)
   } catch (err) {
