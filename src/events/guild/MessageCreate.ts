@@ -19,6 +19,12 @@ const messageHistory: ChatCompletionMessage[] = []
 export default async (message: Message) => {
   if (message.author.bot) return
   if (message.channelId !== env.HASBI3_CHANNEL_ID) return
+  if (message.reference?.messageId) {
+    const repliedMessage = await message.channel.messages.fetch(
+      message.reference.messageId
+    )
+    if (!repliedMessage.author.bot) return
+  }
 
   //   Fetch message history if it's empty
   if (messageHistory.length === 0) {
@@ -39,13 +45,9 @@ export default async (message: Message) => {
     })
   }
 
-  console.log("History", messageHistory)
-
   const chatCompletion = await getGroqChatCompletion(
     messageHistory as Groq.Chat.Completions.ChatCompletionMessageParam[]
   )
-
-  console.log("Response", chatCompletion.choices[0]?.message)
 
   const chatResponse = chatCompletion.choices[0]?.message?.content
   if (chatResponse) {
