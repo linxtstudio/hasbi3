@@ -1,6 +1,6 @@
 import path from "path"
 import { env } from "@/env"
-import { SlashCommandBuilder } from "discord.js"
+import { SlashCommandBuilder, SlashCommandSubcommandBuilder } from "discord.js"
 import fs from "fs-extra"
 
 import type {
@@ -24,6 +24,7 @@ const FILE_EXT = IS_DEV ? ".ts" : ".js"
 export async function loadSlashCommands() {
   const slashCommands: SlashCommandBuilder[] = []
   const slashConfigs: SlashCommandConfig[] = []
+  const commandGroups = new Map<string, SlashCommandBuilder>()
 
   const slashDirFiles = await fs.readdir(SLASH_DIR, {
     recursive: true,
@@ -41,11 +42,13 @@ export async function loadSlashCommands() {
     try {
       // Import the module to check if it exists and has a default export
       const rawModule = await import(`../commands/slash/${scFile}`)
+
       const commandModule = rawModule.default?.default
         ? rawModule.default
         : rawModule
 
       if (!commandModule.default) continue
+
       const {
         command,
         config,
@@ -57,32 +60,65 @@ export async function loadSlashCommands() {
         continue
       }
 
-      if (config?.name == undefined) {
-        config.name = fileBasename
+      const pathParts = scFile.split(/[\\/]/)
+      const isSubcommand = pathParts.length > 1
+
+      if (isSubcommand) {
+        const groupName = pathParts[0]
+        if (config?.name == undefined) {
+          config.name = groupName
+        }
+        config.fileName = scFile
+
+        let groupCommand = commandGroups.get(groupName)
+
+        if (!groupCommand) {
+          groupCommand = new SlashCommandBuilder()
+            .setName(groupName)
+            .setDescription(`${groupName} commands group`)
+          commandGroups.set(groupName, groupCommand)
+        }
+
+        groupCommand.addSubcommand((subcommand) => {
+          subcommand.setName(fileBasename)
+          subcommand.setDescription(config.description || "")
+
+          if (config.options) {
+            addCommandOptions(subcommand, config.options)
+          }
+
+          return subcommand
+        })
+
+        slashConfigs.push(config)
+      } else {
+        if (config?.name == undefined) {
+          config.name = fileBasename
+        }
+        config.fileName = scFile
+
+        const directories = fileDirectory.split("/")
+        const categoryIndex = directories.findIndex(
+          (dir) => !dir.startsWith("(") && !dir.endsWith(")")
+        )
+        const category =
+          categoryIndex !== -1
+            ? directories.slice(categoryIndex).join("/").trim()
+            : undefined
+        if (category && category !== ".") {
+          config.category = category
+        }
+
+        slashCommands.push(buildSlashCommand(config, command))
+        slashConfigs.push(config)
       }
-
-      // Save the file name in the config (used during execution)
-      config.fileName = scFile
-
-      // Get the first directory name of the file directory that isn't inside parenthesis
-      const directories = fileDirectory.split("/")
-      const categoryIndex = directories.findIndex(
-        (dir) => !dir.startsWith("(") && !dir.endsWith(")")
-      )
-      const category =
-        categoryIndex !== -1
-          ? directories.slice(categoryIndex).join("/").trim()
-          : undefined
-      if (category && category !== ".") {
-        config.category = category
-      }
-
-      slashCommands.push(buildSlashCommand(config, command))
-      slashConfigs.push(config)
     } catch (err) {
       Logger.error(`Error loading slash command "${fileBasename}": \n\t${err}`)
     }
   }
+
+  // Add group commands to the final array
+  slashCommands.push(...commandGroups.values())
 
   Logger.debug(`Loaded ${slashCommands.length} slash commands`)
 
@@ -123,7 +159,7 @@ function buildSlashCommand(
  * @param options The options to add
  */
 function addCommandOptions(
-  commandBuilder: SlashCommandBuilder,
+  commandBuilder: SlashCommandBuilder | SlashCommandSubcommandBuilder,
   options: SlashCommandOptionConfig[]
 ) {
   options.forEach((option) => {
