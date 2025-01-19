@@ -1,7 +1,7 @@
+import http from "http"
 import { handleEvents } from "@/handlers/eventHandler"
 import { loadSlashCommands } from "@/loaders/slashCommands"
 import { GatewayIntentBits, REST, Routes } from "discord.js"
-
 import { DiscordClient } from "@/lib/client"
 import { Logger } from "@/lib/logger"
 
