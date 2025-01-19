@@ -29,7 +29,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          source: "dist/,ecosystem.config.js"
+          source: "dist/,node_modules/,ecosystem.config.js"
           target: "~/app/hasbi3/"
 
       - name: Deploy to Server
