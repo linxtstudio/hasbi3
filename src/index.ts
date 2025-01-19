@@ -7,6 +7,16 @@ import { Logger } from "@/lib/logger"
 
 import { env } from "./env"
 
+const server = http.createServer((_, res) => {
+  res.writeHead(200)
+  res.end("Hasbi3 is running!")
+})
+
+server.listen(process.env.PORT || 3000, () => {
+  Logger.debug(`Server is running on port ${process.env.PORT || 3000}`)
+})
+
+
 const client = DiscordClient.getInstance({
   intents: [
     GatewayIntentBits.Guilds,
