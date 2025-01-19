@@ -1,6 +1,6 @@
 import { Client, type ClientOptions } from "discord.js"
 
-import type { SlashCommandConfig } from "@/types/command"
+import type { SlashCommandConfig } from "@/types/command.type"
 
 /**
  * Singleton Discord client.

@@ -8,9 +8,11 @@ dotenv.config()
 const envSchema = z.object({
   DISCORD_TOKEN: z.string(),
   DISCORD_APP_ID: z.string(),
+  GROQ_API_KEY: z.string(),
+  SUPABASE_URL: z.string(),
+  SUPABASE_KEY: z.string(),
   GUILD_ID: z.string(),
   HASBI3_CHANNEL_ID: z.string(),
-  GROQ_API_KEY: z.string(),
   DEBUG: z.preprocess(
     (val) => (val === undefined ? undefined : String(val)),
     z.string().transform((val) => {

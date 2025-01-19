@@ -10,7 +10,7 @@ import type {
   SlashCommandOption,
   SlashCommandOptionConfig,
   SlashCommandStringOptionConfig,
-} from "@/types/command"
+} from "@/types/command.type"
 import { Logger } from "@/lib/logger"
 
 const SLASH_DIR = path.join(__dirname, "../commands/slash")
@@ -66,7 +66,7 @@ export async function loadSlashCommands() {
       if (isSubcommand) {
         const groupName = pathParts[0]
         if (config?.name == undefined) {
-          config.name = groupName
+          config.name = `${groupName}/${fileBasename}`
         }
         config.fileName = scFile
 

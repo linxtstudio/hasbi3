@@ -1,5 +1,6 @@
-import { SlashCommand, SlashCommandConfig } from "@/types/command"
 import { MessageFlags } from "discord.js"
+
+import { SlashCommand, SlashCommandConfig } from "@/types/command.type"
 
 const config: SlashCommandConfig = {
   description: "Show the latency of the bot",

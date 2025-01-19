@@ -1,8 +1,9 @@
 import { format, parse } from "date-fns"
-import { Colors, MessageFlags } from "discord.js"
+import { Colors } from "discord.js"
 
-import { SlashCommand, SlashCommandConfig } from "@/types/command"
+import { SlashCommand, SlashCommandConfig } from "@/types/command.type"
 import { Config } from "@/lib/config"
+import { supabaseClient } from "@/lib/supabase"
 
 const config: SlashCommandConfig = {
   description: "Remind me about something",
@@ -44,7 +45,7 @@ const command: SlashCommand = {
     const event = interaction.options.get("event", true).value as string
     const time = interaction.options.get("time", true).value as string
     const mention =
-      interaction.options.get("mention")?.value?.toString() ??
+      (interaction.options.get("mention")?.value as string) ??
       interaction.user.id
 
     const timeFormatRegex = /^([01][0-9]|2[0-3]):([0-5][0-9])$/
@@ -81,15 +82,32 @@ const command: SlashCommand = {
       }
     }
 
+    const remindAt = parse(`${date} ${time}`, "M/d/yyyy HH:mm", new Date())
+    const data = {
+      event,
+      mention: mention,
+      remind_at: remindAt.toISOString(),
+      sent: true,
+    }
+    const { error } = await supabaseClient.from("reminders").insert([data])
+
+    if (error) {
+      await interaction.editReply(
+        "❌ There was an error while creating the reminder."
+      )
+      return
+    }
+
+    const isRole = !!interaction.guild?.roles.cache.has(mention)
     await interaction.editReply({
       embeds: [
         {
           title: "🗓️ New Reminder",
-          description: `<@${mention}>, A new reminder for **${event}** has been created`,
+          description: `<@${isRole ? "&" : ""}${mention}>, A new reminder for **${event}** has been created`,
           color: Colors.Green,
           fields: [],
           footer: {
-            text: `${time}, ${format(date, "d MMMM yyyy")}`,
+            text: `${format(remindAt, "HH:mm, d MMMM yyyy")}`,
           },
         },
       ],

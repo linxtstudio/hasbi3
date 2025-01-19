@@ -17,16 +17,15 @@ type ChatCompletionMessage = {
 const messageHistory: ChatCompletionMessage[] = []
 
 export default async (message: Message) => {
+  // Return if the message is from a bot or not in the correct channel or not mentioning the bot
   if (message.author.bot) return
   if (message.channelId !== env.HASBI3_CHANNEL_ID) return
-  if (message.reference?.messageId) {
-    const repliedMessage = await message.channel.messages.fetch(
-      message.reference.messageId
-    )
-    if (!repliedMessage.author.bot) return
-  }
+  if (
+    !message.mentions.has(message.client.user!) &&
+    !message.reference?.messageId
+  )
+    return
 
-  //   Fetch message history if it's empty
   if (messageHistory.length === 0) {
     const response = await message.channel.messages.fetch({ limit: 20 })
     const mappedResponse = [...response.values()].reverse().map((message) => {
@@ -45,17 +44,21 @@ export default async (message: Message) => {
     })
   }
 
-  const chatCompletion = await getGroqChatCompletion(
-    messageHistory as Groq.Chat.Completions.ChatCompletionMessageParam[]
-  )
+  try {
+    const chatCompletion = await getGroqChatCompletion(
+      messageHistory as Groq.Chat.Completions.ChatCompletionMessageParam[]
+    )
 
-  const chatResponse = chatCompletion.choices[0]?.message?.content
-  if (chatResponse) {
-    await message.reply(chatResponse)
-    messageHistory.push({
-      name: "Hasbi",
-      content: chatResponse,
-      role: "assistant",
-    })
+    const chatResponse = chatCompletion.choices[0]?.message?.content
+    if (chatResponse) {
+      await message.reply(chatResponse)
+      messageHistory.push({
+        name: "Hasbi",
+        content: chatResponse,
+        role: "assistant",
+      })
+    }
+  } catch (error) {
+    console.error(error)
   }
 }

@@ -11,6 +11,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.16",
     "chalk": "4.1.2",
     "date-fns": "^4.1.0",
     "discord.js": "^14.14.1",
