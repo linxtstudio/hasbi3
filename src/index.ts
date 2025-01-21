@@ -2,6 +2,7 @@ import http from "http"
 import { handleEvents } from "@/handlers/eventHandler"
 import { loadSlashCommands } from "@/loaders/slashCommands"
 import { GatewayIntentBits, REST, Routes } from "discord.js"
+
 import { DiscordClient } from "@/lib/client"
 import { Logger } from "@/lib/logger"
 
@@ -15,7 +16,6 @@ const server = http.createServer((_, res) => {
 server.listen(process.env.PORT || 3000, () => {
   Logger.debug(`Server is running on port ${process.env.PORT || 3000}`)
 })
-
 
 const client = DiscordClient.getInstance({
   intents: [

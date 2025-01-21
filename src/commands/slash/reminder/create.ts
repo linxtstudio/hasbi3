@@ -60,11 +60,11 @@ const command: SlashCommand = {
     const currentTime = new Date().toLocaleString("en-US", {
       timeZone: Config.TIMEZONE,
     })
+    const now = new Date(currentTime)
     let date = interaction.options.get("date")?.value as string
 
     if (!date) {
       const [hours, minutes] = time.split(":").map(Number)
-      const now = new Date(currentTime)
       const eventTime = new Date(currentTime)
       eventTime.setHours(hours, minutes, 0, 0)
 
@@ -82,13 +82,18 @@ const command: SlashCommand = {
       }
     }
 
-    const remindAt = parse(`${date} ${time}`, "M/d/yyyy HH:mm", new Date())
+    const remindAt = parse(
+      `${date} ${time} ${Config.TIMEZONE_OFFSET}`,
+      "M/d/yyyy HH:mm xxx",
+      new Date()
+    )
     const data = {
       event,
       mention: mention,
       remind_at: remindAt.toISOString(),
       sent: true,
     }
+
     const { error } = await supabaseClient.from("reminders").insert([data])
 
     if (error) {

@@ -1,11 +1,24 @@
 import { env } from "@/env"
 import Groq from "groq-sdk"
+import { Model } from "groq-sdk/resources/models.mjs"
 
 import { Config } from "./config"
 
 const groq = new Groq({
   apiKey: env.GROQ_API_KEY,
 })
+
+export const getGroqModelList = async () => {
+  const models = await groq.models.list()
+  return models
+}
+
+export let GROQ_MODEL_LIST: Model["id"][] = []
+export let GROQ_CURRENT_MODEL = "llama-3.3-70b-versatile"
+
+export const setCurrentGroqModel = (model: Model["id"]) => {
+  GROQ_CURRENT_MODEL = model
+}
 
 export const getGroqChatCompletion = async (
   history: Groq.Chat.Completions.ChatCompletionMessageParam[]
@@ -14,11 +27,11 @@ export const getGroqChatCompletion = async (
     messages: [
       {
         role: "system",
-        content: Config.GROQ.INSTRUCTION,
+        content: `${Config.GROQ.INSTRUCTION}. Model yang kamu gunakan saat ini adalah ${GROQ_CURRENT_MODEL}.`,
       },
       ...history,
     ],
-    model: "llama-3.3-70b-versatile",
+    model: GROQ_CURRENT_MODEL,
 
     // Controls randomness: lowering results in less random completions.
     // As the temperature approaches zero, the model will become deterministic

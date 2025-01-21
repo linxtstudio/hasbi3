@@ -22,10 +22,11 @@ const command: SlashCommand = {
       flags: MessageFlags.Ephemeral,
     })
 
+    const fetchedPing = await ping.fetch()
     const emoji = interaction.options.get("emoji")?.value ?? "🏓"
 
     await interaction.editReply(
-      `Pong ${emoji}! Latency is ${ping.createdTimestamp - interaction.createdTimestamp}ms.`
+      `Pong ${emoji}! Latency is ${fetchedPing.createdTimestamp - interaction.createdTimestamp}ms.`
     )
   },
 }
