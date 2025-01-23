@@ -44,19 +44,28 @@ export default async (message: Message) => {
     })
   }
 
+  if (messageHistory.length > 20) {
+    messageHistory.shift()
+  }
+
   try {
     const chatCompletion = await getGroqChatCompletion(
       messageHistory as Groq.Chat.Completions.ChatCompletionMessageParam[]
     )
 
     const chatResponse = chatCompletion.choices[0]?.message?.content
-    if (chatResponse) {
-      await message.reply(chatResponse)
+
+    if (chatResponse && chatResponse.length > 2000) {
+      const chunks = chatResponse.match(/.{1,2000}/g) || []
+      for (const chunk of chunks) {
+        await message.reply(chunk)
+      }
       messageHistory.push({
         name: "Hasbi",
         content: chatResponse,
         role: "assistant",
       })
+      return
     }
   } catch (error) {
     console.error(error)
