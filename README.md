@@ -1,5 +1,18 @@
 # Hasbi3 Bot
 
+## Feature
+
+- Schedule/Reminder system
+- Chatbot with various LLM model
+
+<a href="https://groq.com" target="_blank" rel="noopener noreferrer">
+  <img
+    src="https://groq.com/wp-content/uploads/2024/03/PBG-mark1-color.svg"
+    alt="Powered by Groq for fast inference."
+    width="80"
+  />
+</a>
+
 ## About
 
 Version 3 of the famous Hasbi bot. It is written in TypeScript and uses [DiscordJS](https://discord.js.org/#/) as the library for interacting with Discord.

@@ -1,5 +1,5 @@
 import { env } from "@/env"
-import { Message } from "discord.js"
+import { DiscordAPIError, Message, TextChannel } from "discord.js"
 import Groq from "groq-sdk"
 
 import { getGroqChatCompletion } from "@/lib/groq"
@@ -49,16 +49,19 @@ export default async (message: Message) => {
   }
 
   try {
+    const channel = (await message.channel.fetch()) as TextChannel
+    channel.sendTyping()
+
     const chatCompletion = await getGroqChatCompletion(
       messageHistory as Groq.Chat.Completions.ChatCompletionMessageParam[]
     )
-
     const chatResponse = chatCompletion.choices[0]?.message?.content
 
-    if (chatResponse && chatResponse.length > 2000) {
-      const chunks = chatResponse.match(/.{1,2000}/g) || []
-      for (const chunk of chunks) {
-        await message.reply(chunk)
+    if (chatResponse) {
+      const MAX_MESSAGE_LENGTH = 2000
+      for (let i = 0; i < chatResponse.length; i += MAX_MESSAGE_LENGTH) {
+        const chunk = chatResponse.slice(i, i + MAX_MESSAGE_LENGTH)
+        await channel.send(chunk)
       }
       messageHistory.push({
         name: "Hasbi",
@@ -68,6 +71,11 @@ export default async (message: Message) => {
       return
     }
   } catch (error) {
-    console.error(error)
+    console.log(error)
+    if (error instanceof DiscordAPIError) {
+      message.reply(`❌ DiscordAPIError: ${error.message}`)
+      return
+    }
+    message.reply(`❌ Error: ${error}`)
   }
 }
