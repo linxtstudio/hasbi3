@@ -16,6 +16,8 @@ type ChatCompletionMessage = {
 
 const messageHistory: ChatCompletionMessage[] = []
 
+const RESET_COMMAND = "hideung"
+
 export default async (message: Message) => {
   // Return if the message is from a bot or not in the correct channel or not mentioning the bot
   if (message.author.bot) return
@@ -25,6 +27,17 @@ export default async (message: Message) => {
     !message.reference?.messageId
   )
     return
+
+  if (message.content.toLowerCase() === RESET_COMMAND) {
+    messageHistory.length = 0
+    messageHistory.push({
+      name: "Hasbi",
+      content: "Memory dan instruksi telah direset.",
+      role: "assistant",
+    })
+    message.reply("Saya tidak mengerti apa yang kamu maksud.")
+    return
+  }
 
   if (messageHistory.length === 0) {
     const response = await message.channel.messages.fetch({ limit: 20 })
