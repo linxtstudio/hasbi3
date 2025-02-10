@@ -29,7 +29,11 @@ const command: SlashCommand = {
 
     if (GROQ_MODEL_LIST.length === 0) {
       const modelList = await getGroqModelList()
-      GROQ_MODEL_LIST.push(...modelList.data.map((model) => model.id))
+      GROQ_MODEL_LIST.push(
+        ...modelList.data
+          .filter((model) => model.context_window > 4096)
+          .map((model) => model.id)
+      )
     }
 
     const selectModelmenu = new StringSelectMenuBuilder()
