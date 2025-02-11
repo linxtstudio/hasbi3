@@ -43,6 +43,40 @@ export const getGroqChatCompletion = async (
       },
       ...history,
     ],
+    tools: [
+      {
+        type: "function",
+        function: {
+          name: "createReminder",
+          description:
+            "Helps determine if the user wants assistance to create a reminder. If confirmed, the reminder creation process can be triggered.",
+          parameters: {
+            type: "object",
+            properties: {
+              confirm: {
+                type: "boolean",
+                description:
+                  "True if the user wants help creating a reminder; otherwise, false.",
+              },
+              event: {
+                type: "string",
+                description: "What to remind about in short sentence",
+              },
+              date: {
+                type: "string",
+                description:
+                  "What date to remind; Return in M/d/yyyy format. If not defined return current empty string",
+              },
+              time: {
+                type: "string",
+                description: "What time to remind; Return in HH:mm format",
+              },
+            },
+            required: ["confirm"],
+          },
+        },
+      },
+    ],
     model: GROQ_CURRENT_MODEL,
     temperature: 1.2,
     top_p: 1,

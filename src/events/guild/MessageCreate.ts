@@ -1,9 +1,12 @@
 import { env } from "@/env"
+import { format, parse } from "date-fns"
 import { DiscordAPIError, Message, TextChannel } from "discord.js"
 import Groq from "groq-sdk"
 
 import { Config } from "@/lib/config"
 import { getGroqChatCompletion, getGroqChatSummary } from "@/lib/groq"
+import { Logger } from "@/lib/logger"
+import { createReminder } from "@/lib/supabase"
 
 /**
  * Application command event
@@ -82,16 +85,58 @@ export default async (message: Message) => {
     const chatCompletion = await getGroqChatCompletion(
       messageHistory as Groq.Chat.Completions.ChatCompletionMessageParam[]
     )
-    const chatResponse = chatCompletion.choices[0]?.message?.content
+    const chatResponse = chatCompletion.choices[0]?.message
 
     if (chatResponse) {
-      for (let i = 0; i < chatResponse.length; i += MAX_MESSAGE_LENGTH) {
-        const chunk = chatResponse.slice(i, i + MAX_MESSAGE_LENGTH)
-        await channel.send(chunk)
+      // Handle tool calls
+      if (chatResponse.tool_calls && chatResponse.tool_calls.length > 0) {
+        for (const toolCall of chatResponse.tool_calls) {
+          if (toolCall.function.name === "createReminder") {
+            const args = JSON.parse(toolCall.function.arguments)
+            Logger.debug("Tool Arguments")
+            console.debug(args)
+            if (args.confirm) {
+              await channel.send(
+                "💡 Sepertinya Anda ingin membuat pengingat. Saya akan membantu Anda dengan itu."
+              )
+              const date = args.date || format(new Date(), "M/d/yyyy")
+              const time = args.time
+
+              channel.sendTyping()
+              const remindAt = parse(
+                `${date} ${time} ${Config.TIMEZONE_OFFSET}`,
+                "M/d/yyyy HH:mm xxx",
+                new Date()
+              )
+
+              const response = await createReminder(channel.guild, {
+                event: args.event,
+                mention: message.author.id,
+                channel: channel.id,
+                remind_at: remindAt.toISOString(),
+                sent: false,
+              })
+
+              await channel.send({
+                embeds: response?.embeds,
+              })
+            }
+          }
+        }
       }
+
+      // Handle basic chat response
+      const responseContent = chatResponse.content
+      if (responseContent) {
+        for (let i = 0; i < responseContent.length; i += MAX_MESSAGE_LENGTH) {
+          const chunk = responseContent.slice(i, i + MAX_MESSAGE_LENGTH)
+          await channel.send(chunk)
+        }
+      }
+
       messageHistory.push({
         name: "Hasbi",
-        content: chatResponse,
+        content: chatResponse.content || "",
         role: "assistant",
       })
       return

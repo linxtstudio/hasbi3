@@ -4,7 +4,7 @@ import { Colors } from "discord.js"
 
 import { SlashCommand, SlashCommandConfig } from "@/types/command.type"
 import { Config } from "@/lib/config"
-import { supabaseClient } from "@/lib/supabase"
+import { createReminder, supabaseClient } from "@/lib/supabase"
 
 const config: SlashCommandConfig = {
   description: "Remind me about something",
@@ -97,36 +97,22 @@ const command: SlashCommand = {
       "M/d/yyyy HH:mm xxx",
       new Date()
     )
-    const data = {
+    const response = await createReminder(interaction.guild!, {
       event,
       mention: mention,
       channel: channel,
       remind_at: remindAt.toISOString(),
       sent: false,
-    }
+    })
 
-    const { error } = await supabaseClient.from("reminders").insert([data])
-
-    if (error) {
+    if (response.error) {
       await interaction.editReply(
         "❌ There was an error while creating the reminder."
       )
       return
     }
-
-    const isRole = !!interaction.guild?.roles.cache.has(mention)
     await interaction.editReply({
-      embeds: [
-        {
-          title: "🗓️ New Reminder",
-          description: `<@${isRole ? "&" : ""}${mention}>, A new reminder for **${event}** has been created`,
-          color: Colors.Green,
-          fields: [],
-          footer: {
-            text: `${format(remindAt, "HH:mm, d MMMM yyyy")}`,
-          },
-        },
-      ],
+      embeds: response.embeds,
     })
   },
 }
