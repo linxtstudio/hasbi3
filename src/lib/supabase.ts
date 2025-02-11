@@ -34,6 +34,7 @@ export async function createReminder(
   const { error: supabaseError } = await supabaseClient
     .from("reminders")
     .insert([data])
+
   const isRole = !!guild?.roles.cache.has(data.mention)
 
   if (supabaseError) {

@@ -1,26 +1,15 @@
 import { env } from "@/env"
 import Groq from "groq-sdk"
-import type {
-  ModelListResponse as GroqModelListResponse,
-  Model,
-} from "groq-sdk/resources/models.mjs"
+import type { Model, ModelListResponse } from "groq-sdk/resources/models.mjs"
 
 import { Config } from "./config"
-
-export interface ModelListResponse extends GroqModelListResponse {
-  data: Array<
-    Model & {
-      context_window: number
-    }
-  >
-}
 
 const groq = new Groq({
   apiKey: env.GROQ_API_KEY,
 })
 
 export const getGroqModelList = async () => {
-  const models = (await groq.models.list()) as unknown as ModelListResponse
+  const models = await groq.models.list()
   return models
 }
 
@@ -31,15 +20,37 @@ export const setCurrentGroqModel = (model: Model["id"]) => {
   GROQ_CURRENT_MODEL = model
 }
 
+export const getGroqChatSummary = async (
+  history: Groq.Chat.Completions.ChatCompletionMessageParam[]
+) => {
+  const historyJson = JSON.stringify(history)
+  return groq.chat.completions.create({
+    model: GROQ_CURRENT_MODEL,
+    stop: null,
+    stream: false,
+    messages: [
+      {
+        role: "system",
+        content: `Please provide a concise summary of the following conversation between you (assistant) and users. History: ${historyJson}`,
+      },
+    ],
+  })
+}
+
 export const getGroqChatCompletion = async (
   history: Groq.Chat.Completions.ChatCompletionMessageParam[]
 ) => {
   return groq.chat.completions.create({
+    model: GROQ_CURRENT_MODEL,
+    temperature: 1.0,
+    top_p: 0.95,
+    stop: null,
+    stream: false,
     messages: [
       {
         name: "instruction",
         role: "system",
-        content: `${Config.GROQ.INSTRUCTION}. Model yang kamu gunakan saat ini adalah ${GROQ_CURRENT_MODEL}.`,
+        content: `${Config.GROQ.INSTRUCTION} Your current model is ${GROQ_CURRENT_MODEL}. Today's date is ${new Date().toLocaleDateString()}.`,
       },
       ...history,
     ],
@@ -47,58 +58,44 @@ export const getGroqChatCompletion = async (
       {
         type: "function",
         function: {
-          name: "createReminder",
+          name: "CREATE_REMINDER",
           description:
-            "Helps determine if the user wants assistance to create a reminder. If confirmed, the reminder creation process can be triggered.",
+            "Call this function to create a reminder when required. Use it properly based on the conversation context to set up an event reminder.",
           parameters: {
             type: "object",
             properties: {
-              confirm: {
-                type: "boolean",
-                description:
-                  "True if the user wants help creating a reminder; otherwise, false.",
-              },
               event: {
                 type: "string",
-                description: "What to remind about in short sentence",
-              },
-              date: {
-                type: "string",
                 description:
-                  "What date to remind; Return in M/d/yyyy format. If not defined return current empty string",
+                  "A brief description of the event to remind about.",
               },
               time: {
                 type: "string",
-                description: "What time to remind; Return in HH:mm format",
+                format: "time",
+                description:
+                  "The time for the reminder; Always return in HH:mm format.",
+              },
+              date: {
+                type: "string",
+                format: "date",
+                description:
+                  "The date for the reminder; Always return in M/d/yyyy format.",
+              },
+              mention: {
+                type: "number",
+                description:
+                  "User ID to mention; return only the numeric ID. Return empty if not defined.",
+              },
+              channel: {
+                type: "number",
+                description:
+                  "Channel ID where the reminder will be sent; return only the numeric ID. Return empty if not defined.",
               },
             },
-            required: ["confirm"],
+            required: ["event", "time"],
           },
         },
       },
     ],
-    model: GROQ_CURRENT_MODEL,
-    temperature: 1.2,
-    top_p: 1,
-    stop: null,
-    stream: false,
-  })
-}
-export const getGroqChatSummary = async (
-  history: Groq.Chat.Completions.ChatCompletionMessageParam[]
-) => {
-  const historyJson = JSON.stringify(history)
-  return groq.chat.completions.create({
-    messages: [
-      {
-        role: "system",
-        content: `Please provide a concise summary of the following conversation between you (assistant) and user. History: ${historyJson}`,
-      },
-    ],
-    model: GROQ_CURRENT_MODEL,
-    temperature: 0.3,
-    top_p: 1,
-    stop: null,
-    stream: false,
   })
 }
