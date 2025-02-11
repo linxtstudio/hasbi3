@@ -1,3 +1,4 @@
+import { env } from "@/env"
 import { format, parse } from "date-fns"
 import { Colors } from "discord.js"
 
@@ -7,7 +8,7 @@ import { supabaseClient } from "@/lib/supabase"
 
 const config: SlashCommandConfig = {
   description: "Remind me about something",
-  usage: "/reminder create <event> <time> [date] [mention]",
+  usage: "/reminder create <event> <time> [date] [mention] [channel]",
   options: [
     {
       name: "event",
@@ -33,6 +34,12 @@ const config: SlashCommandConfig = {
       type: "MENTIONABLE",
       required: false,
     },
+    {
+      name: "channel",
+      description: "Channel to send the reminder",
+      type: "CHANNEL",
+      required: false,
+    },
   ],
 }
 
@@ -47,6 +54,9 @@ const command: SlashCommand = {
     const mention =
       (interaction.options.get("mention")?.value as string) ??
       interaction.user.id
+    const channel =
+      (interaction.options.get("channel")?.value as string) ??
+      env.HASBI3_CHANNEL_ID
 
     const timeFormatRegex = /^([01][0-9]|2[0-3]):([0-5][0-9])$/
 
@@ -90,8 +100,9 @@ const command: SlashCommand = {
     const data = {
       event,
       mention: mention,
+      channel: channel,
       remind_at: remindAt.toISOString(),
-      sent: true,
+      sent: false,
     }
 
     const { error } = await supabaseClient.from("reminders").insert([data])

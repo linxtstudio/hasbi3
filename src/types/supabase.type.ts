@@ -41,6 +41,7 @@ export type Database = {
           id: string
           mention: string
           remind_at: string
+          channel: string
           sent: boolean | null
         }
         Insert: {
@@ -49,6 +50,7 @@ export type Database = {
           id?: string
           mention: string
           remind_at: string
+          channel?: string
           sent?: boolean | null
         }
         Update: {
@@ -57,6 +59,7 @@ export type Database = {
           id?: string
           mention?: string
           remind_at?: string
+          channel?: string
           sent?: boolean | null
         }
         Relationships: []

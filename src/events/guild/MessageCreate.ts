@@ -28,7 +28,13 @@ export default async (message: Message) => {
   )
     return
 
-  if (message.content.toLowerCase().includes(Config.GROQ.RESET_KEYWORD)) {
+  // Remove the bot mention from the message content
+  const messageContent = message.content.replace(
+    new RegExp(`<@!?${message.client.user!.id}>\\s*`),
+    ""
+  )
+
+  if (messageContent.toLowerCase().includes(Config.GROQ.RESET_KEYWORD)) {
     messageHistory.length = 0
     messageHistory.push({
       name: "Hasbi",
@@ -45,7 +51,7 @@ export default async (message: Message) => {
     const mappedResponse = [...response.values()].reverse().map((message) => {
       return {
         name: message.author.bot ? "Hasbi" : message.author.username,
-        content: message.content,
+        content: messageContent,
         role: message.author.bot ? "assistant" : "user",
       }
     })
@@ -64,7 +70,7 @@ export default async (message: Message) => {
     }
     messageHistory.push({
       name: message.author.username,
-      content: message.content,
+      content: messageContent,
       role: "user",
     })
   }

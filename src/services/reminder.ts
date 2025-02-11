@@ -25,8 +25,9 @@ export async function checkReminders(client: DiscordClient) {
 
         const reminder = payload.new as Reminder
         try {
+          const channelId = reminder.channel ?? env.HASBI3_CHANNEL_ID
           const channel = (await client.channels.fetch(
-            env.HASBI3_CHANNEL_ID
+            channelId
           )) as TextChannel
           if (!channel?.isTextBased()) return
 
