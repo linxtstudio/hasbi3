@@ -45,6 +45,8 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           source: "dist/,node_modules/,ecosystem.config.js"
           target: "~/app/hasbi3/"
+          overwrite: true
+          timeout: 1m
 
       - name: Deploy to Server
         uses: appleboy/ssh-action@master
