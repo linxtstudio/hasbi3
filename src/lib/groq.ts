@@ -1,6 +1,6 @@
 import { env } from "@/env"
 import Groq from "groq-sdk"
-import type { Model, ModelListResponse } from "groq-sdk/resources/models.mjs"
+import type { Model } from "groq-sdk/resources/models.mjs"
 
 import { Config } from "./config"
 
@@ -42,25 +42,25 @@ export const getGroqChatCompletion = async (
 ) => {
   return groq.chat.completions.create({
     model: GROQ_CURRENT_MODEL,
-    temperature: 1.0,
-    top_p: 0.95,
+    temperature: 0.3,
     stop: null,
     stream: false,
     messages: [
       {
         name: "instruction",
         role: "system",
-        content: `${Config.GROQ.INSTRUCTION} Your current model is ${GROQ_CURRENT_MODEL}. Today's date is ${new Date().toLocaleDateString()}.`,
+        content: `${Config.GROQ.INSTRUCTION} Your current model is ${GROQ_CURRENT_MODEL}. Today's date is ${new Date().toLocaleDateString()}. `,
       },
       ...history,
     ],
+    tool_choice: "auto",
     tools: [
       {
         type: "function",
         function: {
           name: "CREATE_REMINDER",
           description:
-            "Call this function to create a reminder when required. Use it properly based on the conversation context to set up an event reminder.",
+            "Call this function to create a reminder when required. Use it properly based on the conversation context to set up an event reminder. Return in JSON format with specified parameters.",
           parameters: {
             type: "object",
             properties: {
@@ -71,25 +71,23 @@ export const getGroqChatCompletion = async (
               },
               time: {
                 type: "string",
-                format: "time",
                 description:
                   "The time for the reminder; Always return in HH:mm format.",
               },
               date: {
                 type: "string",
-                format: "date",
                 description:
                   "The date for the reminder; Always return in M/d/yyyy format.",
               },
               mention: {
-                type: "number",
+                type: "string",
                 description:
-                  "User ID to mention; return only the numeric ID. Return empty if not defined.",
+                  "User ID to mention; return only the numeric ID as string. Leave empty string if not defined.",
               },
               channel: {
-                type: "number",
+                type: "string",
                 description:
-                  "Channel ID where the reminder will be sent; return only the numeric ID. Return empty if not defined.",
+                  "Channel ID where the reminder will be sent; return only the numeric ID as string. Leave empty string if not defined.",
               },
             },
             required: ["event", "time"],

@@ -25,10 +25,19 @@ export async function checkReminders(client: DiscordClient) {
 
         const reminder = payload.new as Reminder
         try {
-          const channelId = reminder.channel ?? env.HASBI3_CHANNEL_ID
-          const channel = (await client.channels.fetch(
-            channelId
-          )) as TextChannel
+          let channel: TextChannel | null = null
+          try {
+            const channelId = reminder.channel ?? env.HASBI3_CHANNEL_ID
+            channel = (await client.channels.fetch(channelId)) as TextChannel
+          } catch (error) {
+            Logger.debug(
+              `Channel ${reminder.channel} not found, using default channel`
+            )
+            channel = (await client.channels.fetch(
+              env.HASBI3_CHANNEL_ID
+            )) as TextChannel
+          }
+
           if (!channel?.isTextBased()) return
 
           const isRole = channel.guild.roles.cache.has(reminder.mention)
