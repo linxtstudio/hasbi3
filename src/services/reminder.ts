@@ -3,6 +3,7 @@ import { TextChannel } from "discord.js"
 
 import { Database } from "@/types/supabase.type"
 import { DiscordClient } from "@/lib/client"
+import { removeFromCachedReminderList } from "@/lib/groq"
 import { Logger } from "@/lib/logger"
 import { supabaseClient } from "@/lib/supabase"
 
@@ -49,6 +50,9 @@ export async function checkReminders(client: DiscordClient) {
             .from("reminders")
             .delete()
             .eq("id", reminder.id)
+
+          // Remove from cached reminder list
+          removeFromCachedReminderList(reminder.id)
 
           if (error) {
             Logger.error(error)

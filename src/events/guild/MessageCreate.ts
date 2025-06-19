@@ -1,18 +1,20 @@
 import { env } from "@/env"
 import { format, parse } from "date-fns"
-import { DiscordAPIError, Message, TextChannel } from "discord.js"
+import { DiscordAPIError, Message, MessageFlags, TextChannel } from "discord.js"
 import Groq from "groq-sdk"
 
+import { Database } from "@/types/supabase.type"
 import { Config } from "@/lib/config"
 import { getGroqChatCompletion, getGroqChatSummary } from "@/lib/groq"
 import { Logger } from "@/lib/logger"
-import { createReminder } from "@/lib/supabase"
+import { createReminder, deleteReminder } from "@/lib/supabase"
 
 /**
  * Application command event
  */
 
 const messageHistory: Groq.Chat.Completions.ChatCompletionMessageParam[] = []
+
 const MAX_MESSAGE_LENGTH = 2000
 const HISTORY_THRESHOLD = 20
 
@@ -96,11 +98,6 @@ export default async (message: Message) => {
             const mention = args.mention || message.author.id
             const channelId = args.channel || message.channel.id
 
-            console.log(chatResponse.content)
-
-            Logger.debug("Tool Arguments")
-            console.debug(args)
-
             if (args.event && args.time) {
               const remindAt = parse(
                 `${date} ${args.time} ${Config.TIMEZONE_OFFSET}`,
@@ -117,20 +114,36 @@ export default async (message: Message) => {
                 sent: false,
               })
 
+              if (response?.error) {
+                await channel.send({
+                  content: `❌ Error: ${response.error.message}`,
+                })
+                return
+              }
+
               await channel.send({
                 embeds: response?.embeds,
               })
-
-              // WIP: Bot won't think that the reminder has been created
-              const REMINDER_SUCCESS_MESSAGE =
-                "💡 Reminder sudah berhasil saya buat, ada lagi yang bisa saya bantu?"
-              await message.reply(REMINDER_SUCCESS_MESSAGE)
-              messageHistory.push({
-                name: "Hasbi",
-                content: REMINDER_SUCCESS_MESSAGE,
-                role: "assistant",
-              })
             }
+          }
+
+          if (toolCall.function.name === "DELETE_REMINDER") {
+            const args = JSON.parse(toolCall.function.arguments)
+            const reminderId = args.id
+
+            channel.sendTyping()
+            const response = await deleteReminder(channel.guild, reminderId)
+
+            if (response?.error) {
+              await channel.send({
+                content: `❌ Error: ${response.error.message}`,
+              })
+              return
+            }
+
+            await channel.send({
+              embeds: response?.embeds,
+            })
           }
         }
       }

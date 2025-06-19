@@ -35,7 +35,9 @@ const command: SlashCommand = {
         {
           locale: id,
         }
-      )}\n`
+      )} ${reminder.mention ? `- <@${reminder.mention}>` : ""} ${
+        reminder.channel ? `- <#${reminder.channel}>` : ""
+      }`
     })
 
     if (!reminderList.length) {

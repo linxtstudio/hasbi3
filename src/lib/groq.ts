@@ -1,6 +1,11 @@
 import { env } from "@/env"
+import { format } from "date-fns"
+import { id } from "date-fns/locale"
 import Groq from "groq-sdk"
 import type { Model } from "groq-sdk/resources/models.mjs"
+
+import { Database } from "@/types/supabase.type"
+import { supabaseClient } from "@/lib/supabase"
 
 import { Config } from "./config"
 
@@ -37,9 +42,56 @@ export const getGroqChatSummary = async (
   })
 }
 
+export let cachedReminderList: Database["public"]["Tables"]["reminders"]["Row"][] =
+  []
+export const addToCachedReminderList = (
+  reminder: Database["public"]["Tables"]["reminders"]["Row"]
+) => {
+  cachedReminderList.push(reminder)
+}
+
+export const removeFromCachedReminderList = (reminderId: string) => {
+  cachedReminderList = cachedReminderList.filter(
+    (reminder) => reminder.id !== reminderId
+  )
+}
+
+async function getReminderList() {
+  if (cachedReminderList.length > 0) {
+    return cachedReminderList
+      .map(
+        (reminder, idx) =>
+          `${idx + 1}.
+          ID: "${reminder.id}" (Do not mention this ID in the conversation),
+          Event: ${reminder.event}, 
+          Date & Time: ${format(
+            reminder.remind_at.toLocaleString(),
+            "HH:mm, d MMMM yyyy",
+            {
+              locale: id,
+            }
+          )}
+          Mention: ${reminder.mention ? `<@${reminder.mention}>` : "N/A"},
+          Channel: ${reminder.channel ? `<#${reminder.channel}>` : "N/A"}`
+      )
+      .join("\n")
+  }
+
+  const { data: reminders, error } = await supabaseClient
+    .from("reminders")
+    .select("*")
+
+  if (error) {
+    return "No active reminders."
+  }
+  cachedReminderList = reminders
+  return await getReminderList()
+}
+
 export const getGroqChatCompletion = async (
   history: Groq.Chat.Completions.ChatCompletionMessageParam[]
 ) => {
+  const reminderListText = await getReminderList()
   return groq.chat.completions.create({
     model: GROQ_CURRENT_MODEL,
     temperature: 0.3,
@@ -49,7 +101,13 @@ export const getGroqChatCompletion = async (
       {
         name: "instruction",
         role: "system",
-        content: `${Config.GROQ.INSTRUCTION} Your current model is ${GROQ_CURRENT_MODEL}. Today's date is ${new Date().toLocaleDateString()}. `,
+        content: [
+          Config.GROQ.INSTRUCTION,
+          `Your current model is ${GROQ_CURRENT_MODEL}.`,
+          `Today's date is ${new Date().toLocaleDateString()}.`,
+          `This is the reminder list:`,
+          `${reminderListText}`,
+        ].join("\n"),
       },
       ...history,
     ],
@@ -91,6 +149,25 @@ export const getGroqChatCompletion = async (
               },
             },
             required: ["event", "time"],
+          },
+        },
+      },
+      {
+        type: "function",
+        function: {
+          name: "DELETE_REMINDER",
+          description:
+            "Call this function to delete a reminder when required. Use it properly based on the conversation context and the reminder list you have knowledge of to determine the correct reminder ID to delete. Figure out the appropriate ID from the conversation and reminder list. If struggling, list all the reminders with their IDs and ask the user to select the correct one. Return in JSON format with specified parameters.",
+          parameters: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description:
+                  "The ID of the reminder to delete; deduce the correct ID from the conversation context and the reminder list. Return only the numeric ID as string.",
+              },
+            },
+            required: ["id"],
           },
         },
       },
