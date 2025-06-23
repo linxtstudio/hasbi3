@@ -42,22 +42,23 @@ export const getGroqChatSummary = async (
   })
 }
 
-export let cachedReminderList: Database["public"]["Tables"]["reminders"]["Row"][] =
-  []
+export let cachedReminderList:
+  | Database["public"]["Tables"]["reminders"]["Row"][]
+  | undefined = []
 export const addToCachedReminderList = (
   reminder: Database["public"]["Tables"]["reminders"]["Row"]
 ) => {
-  cachedReminderList.push(reminder)
+  cachedReminderList?.push(reminder)
 }
 
 export const removeFromCachedReminderList = (reminderId: string) => {
-  cachedReminderList = cachedReminderList.filter(
+  cachedReminderList = cachedReminderList?.filter(
     (reminder) => reminder.id !== reminderId
   )
 }
 
 async function getReminderList() {
-  if (cachedReminderList.length > 0) {
+  if (cachedReminderList && cachedReminderList.length > 0) {
     return cachedReminderList
       .map(
         (reminder, idx) =>
@@ -84,7 +85,7 @@ async function getReminderList() {
   if (error) {
     return "No active reminders."
   }
-  cachedReminderList = reminders
+  cachedReminderList = reminders || []
   return await getReminderList()
 }
 
