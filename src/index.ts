@@ -4,6 +4,7 @@ import { loadSlashCommands } from "@/loaders/slashCommands"
 import { GatewayIntentBits, REST, Routes } from "discord.js"
 
 import { DiscordClient } from "@/lib/client"
+import { initGroq } from "@/lib/groq"
 import { Logger } from "@/lib/logger"
 
 import { env } from "./env"
@@ -43,6 +44,7 @@ const rest = new REST({ version: "10" }).setToken(env.DISCORD_TOKEN)
     client.slashConfigs = slashConfigs
 
     Logger.debug(`Successfully reloaded ${res.length} (/) commands.`)
+    await initGroq()
     client.login(env.DISCORD_TOKEN)
   } catch (error) {
     Logger.error(`Error refreshing application (/) commands: \n\t${error}`)

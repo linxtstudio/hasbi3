@@ -18,6 +18,22 @@ const messageHistory: Groq.Chat.Completions.ChatCompletionMessageParam[] = []
 const MAX_MESSAGE_LENGTH = 2000
 const HISTORY_THRESHOLD = 20
 
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  context: string
+) {
+  return (await Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${context} timed out after ${ms}ms`)),
+        ms
+      )
+    ),
+  ])) as T
+}
+
 export default async (message: Message) => {
   // Return if the message is from a bot or not in the correct channel or not mention/replying the bot
   if (message.author.bot) return
@@ -55,7 +71,7 @@ export default async (message: Message) => {
       .reverse()
       .map((m) => ({
         name: m.author.bot ? "Hasbi" : m.author.username,
-        content: messageContent,
+        content: m.content,
         role: m.author.bot ? "assistant" : "user",
       }))
 
@@ -64,7 +80,11 @@ export default async (message: Message) => {
     )
   } else {
     if (messageHistory.length > HISTORY_THRESHOLD) {
-      const summary = await getGroqChatSummary(messageHistory)
+      const summary = await withTimeout(
+        getGroqChatSummary(messageHistory),
+        15000,
+        "getGroqChatSummary"
+      )
       messageHistory.length = 0
       messageHistory.push({
         name: "summary",
@@ -83,17 +103,33 @@ export default async (message: Message) => {
   try {
     const channel = (await message.channel.fetch()) as TextChannel
     channel.sendTyping()
-    const chatCompletion = await getGroqChatCompletion(messageHistory)
+    const start = Date.now()
+    const chatCompletion = await withTimeout(
+      getGroqChatCompletion(messageHistory),
+      20000,
+      "getGroqChatCompletion"
+    )
+    Logger.debug(`Groq completion took ${Date.now() - start}ms`)
     const chatResponse = chatCompletion.choices[0]?.message
 
     if (chatResponse) {
+      Logger.info(chatResponse)
+
       const isToolCall =
         chatResponse.tool_calls && chatResponse.tool_calls.length > 0
 
       if (isToolCall) {
         for (const toolCall of chatResponse.tool_calls!) {
           if (toolCall.function.name === "CREATE_REMINDER") {
-            const args = JSON.parse(toolCall.function.arguments)
+            let args: any
+            try {
+              args = JSON.parse(toolCall.function.arguments)
+            } catch (err: any) {
+              await channel.send({
+                content: `❌ Invalid tool args: ${err.message}`,
+              })
+              continue
+            }
             const date = args.date || format(new Date(), "M/d/yyyy")
             const mention = args.mention || message.author.id
             const channelId = args.channel || message.channel.id
@@ -104,6 +140,13 @@ export default async (message: Message) => {
                 "M/d/yyyy HH:mm xxx",
                 new Date()
               )
+
+              if (isNaN(remindAt.getTime())) {
+                await channel.send({
+                  content: "❌ Invalid date/time for reminder.",
+                })
+                continue
+              }
 
               channel.sendTyping()
               const response = await createReminder(channel.guild, {
@@ -128,7 +171,15 @@ export default async (message: Message) => {
           }
 
           if (toolCall.function.name === "DELETE_REMINDER") {
-            const args = JSON.parse(toolCall.function.arguments)
+            let args: any
+            try {
+              args = JSON.parse(toolCall.function.arguments)
+            } catch (err: any) {
+              await channel.send({
+                content: `❌ Invalid tool args: ${err.message}`,
+              })
+              continue
+            }
             const reminderId = args.id
 
             channel.sendTyping()
@@ -149,6 +200,7 @@ export default async (message: Message) => {
       }
 
       const responseContent = chatResponse.content
+
       if (responseContent) {
         for (let i = 0; i < responseContent.length; i += MAX_MESSAGE_LENGTH) {
           const chunk = responseContent.slice(i, i + MAX_MESSAGE_LENGTH)
@@ -166,8 +218,10 @@ export default async (message: Message) => {
       })
       return
     }
+
+    await channel.send("❌ No response from model.")
   } catch (error: any) {
-    console.log(error)
+    Logger.error(error)
     if (error instanceof DiscordAPIError) {
       message.reply(`❌ DiscordAPIError: ${error.message}`)
       return

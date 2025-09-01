@@ -32,15 +32,37 @@ type CreateReminderResponse = {
 
 export async function createReminder(
   guild: Guild,
-  data: Database["public"]["Tables"]["reminders"]["Insert"]
+  newReminder: Database["public"]["Tables"]["reminders"]["Insert"]
 ): Promise<CreateReminderResponse> {
-  const { data: response, error: supabaseError } = await supabaseClient
-    .from("reminders")
-    .insert([data])
-    .select()
-    .single()
+  function isRateLimit(err: any) {
+    const msg = (err?.message || "").toLowerCase()
+    return (
+      err?.code === "429" ||
+      msg.includes("rate limit") ||
+      msg.includes("too many") ||
+      msg.includes("exceed")
+    )
+  }
 
-  const isRole = !!guild?.roles.cache.has(data.mention)
+  let response: Database["public"]["Tables"]["reminders"]["Row"] | null = null
+  let supabaseError: PostgrestError | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { data, error } = await supabaseClient
+      .from("reminders")
+      .insert([newReminder])
+      .select()
+      .single()
+    if (!error) {
+      response = data
+      break
+    }
+    supabaseError = error
+    if (!isRateLimit(error)) break
+    const waitMs = attempt === 1 ? 300 : attempt === 2 ? 700 : 1200
+    await new Promise((r) => setTimeout(r, waitMs))
+  }
+
+  const isRole = !!guild?.roles.cache.has(newReminder.mention)
 
   if (supabaseError) {
     return {
@@ -51,18 +73,18 @@ export async function createReminder(
   }
 
   // Add to cached reminder list
-  addToCachedReminderList(response)
+  if (response) addToCachedReminderList(response)
 
   return {
     success: true,
     embeds: [
       {
         title: "🗓️ New Reminder",
-        description: `<@${isRole ? "&" : ""}${data.mention}>, A new reminder for **${data.event}** has been created`,
+        description: `<@${isRole ? "&" : ""}${newReminder.mention}>, A new reminder for **${newReminder.event}** has been created`,
         color: Colors.Green,
         fields: [],
         footer: {
-          text: `${format(data.remind_at, "HH:mm, d MMMM yyyy")}`,
+          text: `${format(new Date(newReminder.remind_at), "HH:mm, d MMMM yyyy")}`,
         },
       },
     ],
@@ -71,11 +93,33 @@ export async function createReminder(
 }
 
 export async function deleteReminder(guild: Guild, reminderId: string) {
-  const { data: reminderData, error: supabaseFetchError } = await supabaseClient
-    .from("reminders")
-    .select("event")
-    .eq("id", reminderId)
-    .single()
+  function isRateLimit(err: any) {
+    const msg = (err?.message || "").toLowerCase()
+    return (
+      err?.code === "429" ||
+      msg.includes("rate limit") ||
+      msg.includes("too many") ||
+      msg.includes("exceed")
+    )
+  }
+
+  let reminderData: { event: string } | null = null
+  let supabaseFetchError: PostgrestError | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { data, error } = await supabaseClient
+      .from("reminders")
+      .select("event")
+      .eq("id", reminderId)
+      .single()
+    if (!error) {
+      reminderData = data
+      break
+    }
+    supabaseFetchError = error
+    if (!isRateLimit(error)) break
+    const waitMs = attempt === 1 ? 300 : attempt === 2 ? 700 : 1200
+    await new Promise((r) => setTimeout(r, waitMs))
+  }
 
   if (supabaseFetchError) {
     return {
@@ -85,10 +129,18 @@ export async function deleteReminder(guild: Guild, reminderId: string) {
     }
   }
 
-  const { error: supabaseError } = await supabaseClient
-    .from("reminders")
-    .delete()
-    .eq("id", reminderId)
+  let supabaseError: PostgrestError | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const { error } = await supabaseClient
+      .from("reminders")
+      .delete()
+      .eq("id", reminderId)
+    if (!error) break
+    supabaseError = error
+    if (!isRateLimit(error)) break
+    const waitMs = attempt === 1 ? 300 : attempt === 2 ? 700 : 1200
+    await new Promise((r) => setTimeout(r, waitMs))
+  }
 
   if (supabaseError) {
     return {
@@ -106,7 +158,7 @@ export async function deleteReminder(guild: Guild, reminderId: string) {
     embeds: [
       {
         title: "🗓️ Reminder Deleted",
-        description: `The reminder **${reminderData.event}** has been deleted`,
+        description: `The reminder **${reminderData?.event ?? "(unknown)"}** has been deleted`,
         color: Colors.Red,
         fields: [],
         footer: {
